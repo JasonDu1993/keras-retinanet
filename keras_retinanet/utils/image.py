@@ -90,16 +90,17 @@ class TransformParameters:
         relative_translation:  If true (the default), interpret translation as a factor of the image size.
                                If false, interpret it as absolute pixels.
     """
+
     def __init__(
-        self,
-        fill_mode            = 'nearest',
-        interpolation        = 'linear',
-        cval                 = 0,
-        relative_translation = True,
+            self,
+            fill_mode='nearest',
+            interpolation='linear',
+            cval=0,
+            relative_translation=True,
     ):
-        self.fill_mode            = fill_mode
-        self.cval                 = cval
-        self.interpolation        = interpolation
+        self.fill_mode = fill_mode
+        self.cval = cval
+        self.interpolation = interpolation
         self.relative_translation = relative_translation
 
     def cvBorderMode(self):
@@ -142,10 +143,10 @@ def apply_transform(matrix, image, params):
     output = cv2.warpAffine(
         image,
         matrix[:2, :],
-        dsize       = (image.shape[1], image.shape[0]),
-        flags       = params.cvInterpolation(),
-        borderMode  = params.cvBorderMode(),
-        borderValue = params.cval,
+        dsize=(image.shape[1], image.shape[0]),
+        flags=params.cvInterpolation(),
+        borderMode=params.cvBorderMode(),
+        borderValue=params.cval,
     )
     return output
 

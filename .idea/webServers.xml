@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="fc68bd3b-9b0b-4625-84cf-17d7634d4386" name="retinanet" url="http://10.1.29.242">
+        <fileTransfer host="10.1.29.242" port="22" rootFolder="/home/sk49" accessType="SFTP">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" />
+          </advancedOptions>
+          <option name="port" value="22" />
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
