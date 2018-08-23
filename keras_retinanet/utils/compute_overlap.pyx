@@ -9,10 +9,9 @@ cimport cython
 import numpy as np
 cimport numpy as np
 
-
 def compute_overlap(
-    np.ndarray[double, ndim=2] boxes,
-    np.ndarray[double, ndim=2] query_boxes
+        np.ndarray[double, ndim=2] boxes,
+        np.ndarray[double, ndim=2] query_boxes
 ):
     """
     Args

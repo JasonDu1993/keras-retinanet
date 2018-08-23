@@ -31,19 +31,23 @@ def draw_box(image, box, color, thickness=2):
     """
     b = np.array(box).astype(int)
     cv2.rectangle(image, (b[0], b[1]), (b[2], b[3]), color, thickness, cv2.LINE_AA)
+    # return image
 
 
 def draw_caption(image, box, caption):
     """ Draws a caption above the box in an image.
 
-    # Arguments
+    Args:
         image   : The image to draw on.
         box     : A list of 4 elements (x1, y1, x2, y2).
         caption : String containing the text to draw.
+    Returns:
+        image
     """
     b = np.array(box).astype(int)
     cv2.putText(image, caption, (b[0], b[1] - 10), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 0), 2)
     cv2.putText(image, caption, (b[0], b[1] - 10), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1)
+    # return image
 
 
 def draw_boxes(image, boxes, color, thickness=2):

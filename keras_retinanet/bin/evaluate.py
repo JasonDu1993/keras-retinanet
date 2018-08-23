@@ -130,7 +130,7 @@ def main(args=None):
 
     # load the model
     print('Loading model, this may take a second...')
-    model = models.load_model(args.model, backbone_name=args.backbone, convert=args.convert_model)
+    model = models.load_model_custom(args.model, backbone_name=args.backbone, convert=args.convert_model)
 
     # print model summary
     # print(model.summary())
