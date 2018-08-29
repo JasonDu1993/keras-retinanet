@@ -19,7 +19,7 @@ import keras
 import numpy as np
 import cv2
 from PIL import Image
-
+from time import time
 from .transform import change_transform_origin
 
 
@@ -29,8 +29,20 @@ def read_image_bgr(path):
     Args
         path: Path to the image.
     """
-    image = np.asarray(Image.open(path).convert('RGB'))
-    return image[:, :, ::-1].copy()
+    # print("read_image_bgr path", path)
+    # # use Image open the image
+    # starttime = time()
+    # image = np.asarray(Image.open(path).convert("RGB"))
+    # d = image[:, :, ::-1].copy()
+    # t = time()
+    # print("Image.open(path).convert('RGB')", (t - starttime), "s")
+
+    # use opencv open the image
+    image = cv2.imread(path)
+    # print("g", g.shape)
+    # print(g[:4, :4, 0])
+    # print("cv2.imread", (time() - t), "s")
+    return image
 
 
 def preprocess_image(x):
@@ -93,17 +105,18 @@ class TransformParameters:
         relative_translation:  If true (the default), interpret translation as a factor of the image size.
                                If false, interpret it as absolute pixels.
     """
+
     def __init__(
-        self,
-        fill_mode            = 'nearest',
-        interpolation        = 'linear',
-        cval                 = 0,
-        data_format          = None,
-        relative_translation = True,
+            self,
+            fill_mode='nearest',
+            interpolation='linear',
+            cval=0,
+            data_format=None,
+            relative_translation=True,
     ):
-        self.fill_mode            = fill_mode
-        self.cval                 = cval
-        self.interpolation        = interpolation
+        self.fill_mode = fill_mode
+        self.cval = cval
+        self.interpolation = interpolation
         self.relative_translation = relative_translation
 
         if data_format is None:
@@ -115,7 +128,8 @@ class TransformParameters:
         elif data_format == 'channels_last':
             self.channel_axis = 2
         else:
-            raise ValueError("invalid data_format, expected 'channels_first' or 'channels_last', got '{}'".format(data_format))
+            raise ValueError(
+                "invalid data_format, expected 'channels_first' or 'channels_last', got '{}'".format(data_format))
 
     def cvBorderMode(self):
         if self.fill_mode == 'constant':
@@ -146,8 +160,9 @@ def apply_transform(matrix, image, params):
 
     The origin of transformation is at the top left corner of the image.
 
-    The matrix is interpreted such that a point (x, y) on the original image is moved to transform * (x, y) in the generated image.
-    Mathematically speaking, that means that the matrix is a transformation from the transformed image space to the original image space.
+    The matrix is interpreted such that a point (x, y) on the original image is moved to transform * (x, y) in the
+    generated image. Mathematically speaking, that means that the matrix is a transformation from the transformed image
+    space to the original image space.
 
     Args
       matrix: A homogeneous 3 by 3 matrix holding representing the transformation to apply.
@@ -160,10 +175,10 @@ def apply_transform(matrix, image, params):
     output = cv2.warpAffine(
         image,
         matrix[:2, :],
-        dsize       = (image.shape[1], image.shape[0]),
-        flags       = params.cvInterpolation(),
-        borderMode  = params.cvBorderMode(),
-        borderValue = params.cval,
+        dsize=(image.shape[1], image.shape[0]),
+        flags=params.cvInterpolation(),
+        borderMode=params.cvBorderMode(),
+        borderValue=params.cval,
     )
 
     if params.channel_axis != 2:

@@ -14,9 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import keras_retinanet.bin.train
-
 import warnings
+
+import train
 
 
 def test_coco():
@@ -24,7 +24,7 @@ def test_coco():
     warnings.simplefilter('ignore')
 
     # run training / evaluation
-    keras_retinanet.bin.train.main([
+    train.main([
         '--epochs=1',
         '--steps=1',
         '--no-weights',
@@ -39,7 +39,7 @@ def test_pascal():
     warnings.simplefilter('ignore')
 
     # run training / evaluation
-    keras_retinanet.bin.train.main([
+    train.main([
         '--epochs=1',
         '--steps=1',
         '--no-weights',
@@ -54,7 +54,7 @@ def test_csv():
     warnings.simplefilter('ignore')
 
     # run training / evaluation
-    keras_retinanet.bin.train.main([
+    train.main([
         '--epochs=1',
         '--steps=1',
         '--no-weights',
@@ -70,7 +70,7 @@ def test_vgg():
     warnings.simplefilter('ignore')
 
     # run training / evaluation
-    keras_retinanet.bin.train.main([
+    train.main([
         '--backbone=vgg16',
         '--epochs=1',
         '--steps=1',

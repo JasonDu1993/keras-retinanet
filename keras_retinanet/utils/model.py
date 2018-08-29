@@ -26,3 +26,18 @@ def freeze(model):
     for layer in model.layers:
         layer.trainable = False
     return model
+
+
+def freeze_by_layernum(model, layer_num=None):
+    """ freeze the model layers before the `layer_num` layers.
+
+    The weights for these layers will not be updated during training.
+
+    This function modifies the given model in-place,
+    but it also returns the modified model to allow easy chaining with other functions.
+    """
+    if layer_num is None:
+        layer_num = len(model.layers)
+    for layer in model.layers[:layer_num]:
+        layer.trainable = False
+    return model

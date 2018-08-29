@@ -15,6 +15,7 @@ limitations under the License.
 """
 
 import numpy as np
+from time import time
 
 DEFAULT_PRNG = np.random
 
@@ -44,7 +45,7 @@ def transform_aabb(transform, aabb):
     points = transform.dot([
         [x1, x2, x1, x2],
         [y1, y2, y2, y1],
-        [1,  1,  1,  1 ],
+        [1, 1, 1, 1],
     ])
 
     # Extract the min and max corners again.
@@ -76,7 +77,7 @@ def rotation(angle):
     """
     return np.array([
         [np.cos(angle), -np.sin(angle), 0],
-        [np.sin(angle),  np.cos(angle), 0],
+        [np.sin(angle), np.cos(angle), 0],
         [0, 0, 1]
     ])
 
@@ -128,7 +129,7 @@ def shear(angle):
     """
     return np.array([
         [1, -np.sin(angle), 0],
-        [0,  np.cos(angle), 0],
+        [0, np.cos(angle), 0],
         [0, 0, 1]
     ])
 
@@ -200,17 +201,17 @@ def change_transform_origin(transform, center):
 
 
 def random_transform(
-    min_rotation=0,
-    max_rotation=0,
-    min_translation=(0, 0),
-    max_translation=(0, 0),
-    min_shear=0,
-    max_shear=0,
-    min_scaling=(1, 1),
-    max_scaling=(1, 1),
-    flip_x_chance=0,
-    flip_y_chance=0,
-    prng=DEFAULT_PRNG
+        min_rotation=0,
+        max_rotation=0,
+        min_translation=(0, 0),
+        max_translation=(0, 0),
+        min_shear=0,
+        max_shear=0,
+        min_scaling=(1, 1),
+        max_scaling=(1, 1),
+        flip_x_chance=0,
+        flip_y_chance=0,
+        prng=DEFAULT_PRNG
 ):
     """ Create a random transformation.
 
@@ -284,6 +285,8 @@ def random_transform_generator(prng=None, **kwargs):
     if prng is None:
         # RandomState automatically seeds using the best available method.
         prng = np.random.RandomState()
-
     while True:
-        yield random_transform(prng=prng, **kwargs)
+        # starttime = time()
+        a = random_transform(prng=prng, **kwargs)
+        # print("random_transform", (time() - starttime), "s")
+        yield a

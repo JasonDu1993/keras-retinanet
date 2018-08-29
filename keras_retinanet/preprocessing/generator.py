@@ -37,15 +37,15 @@ class Generator(object):
     """
 
     def __init__(
-        self,
-        transform_generator = None,
-        batch_size=1,
-        group_method='ratio',  # one of 'none', 'random', 'ratio'
-        shuffle_groups=True,
-        image_min_side=800,
-        image_max_side=1333,
-        transform_parameters=None,
-        compute_anchor_targets=anchor_targets_bbox,
+            self,
+            transform_generator=None,
+            batch_size=1,
+            group_method='ratio',  # one of 'none', 'random', 'ratio'
+            shuffle_groups=True,
+            image_min_side=800,
+            image_max_side=1333,
+            transform_parameters=None,
+            compute_anchor_targets=anchor_targets_bbox,
     ):
         """ Initialize Generator object.
 
@@ -59,17 +59,17 @@ class Generator(object):
             transform_parameters   : The transform parameters used for data augmentation.
             compute_anchor_targets : Function handler for computing the targets of anchors for an image and its annotations.
         """
-        self.transform_generator    = transform_generator
-        self.batch_size             = int(batch_size)
-        self.group_method           = group_method
-        self.shuffle_groups         = shuffle_groups
-        self.image_min_side         = image_min_side
-        self.image_max_side         = image_max_side
-        self.transform_parameters   = transform_parameters or TransformParameters()
+        self.transform_generator = transform_generator
+        self.batch_size = int(batch_size)
+        self.group_method = group_method
+        self.shuffle_groups = shuffle_groups
+        self.image_min_side = image_min_side
+        self.image_max_side = image_max_side
+        self.transform_parameters = transform_parameters or TransformParameters()
         self.compute_anchor_targets = compute_anchor_targets
 
         self.group_index = 0
-        self.lock        = threading.Lock()
+        self.lock = threading.Lock()
 
         self.group_images()
 
@@ -118,7 +118,9 @@ class Generator(object):
         """
         # test all annotations
         for index, (image, annotations) in enumerate(zip(image_group, annotations_group)):
-            assert(isinstance(annotations, np.ndarray)), '\'load_annotations\' should return a list of numpy arrays, received: {}'.format(type(annotations))
+            assert (isinstance(annotations,
+                               np.ndarray)), '\'load_annotations\' should return a list of numpy arrays, received: {}'.format(
+                type(annotations))
 
             # test x2 < x1 | y2 < y1 | x1 < 0 | y1 < 0 | x2 <= 0 | y2 <= 0 | x2 >= image.shape[1] | y2 >= image.shape[0]
             invalid_indices = np.where(
@@ -151,8 +153,9 @@ class Generator(object):
         """
         # randomly transform both image and annotations
         if self.transform_generator:
-            transform = adjust_transform_for_image(next(self.transform_generator), image, self.transform_parameters.relative_translation)
-            image     = apply_transform(transform, image, self.transform_parameters)
+            transform = adjust_transform_for_image(next(self.transform_generator), image,
+                                                   self.transform_parameters.relative_translation)
+            image = apply_transform(transform, image, self.transform_parameters)
 
             # Transform the bounding boxes in the annotations.
             annotations = annotations.copy()
@@ -196,7 +199,7 @@ class Generator(object):
             image, annotations = self.preprocess_group_entry(image, annotations)
 
             # copy processed data back to group
-            image_group[index]       = image
+            image_group[index] = image
             annotations_group[index] = annotations
 
         return image_group, annotations_group
@@ -212,7 +215,8 @@ class Generator(object):
             order.sort(key=lambda x: self.image_aspect_ratio(x))
 
         # divide into groups, one group = one batch
-        self.groups = [[order[x % len(order)] for x in range(i, i + self.batch_size)] for i in range(0, len(order), self.batch_size)]
+        self.groups = [[order[x % len(order)] for x in range(i, i + self.batch_size)] for i in
+                       range(0, len(order), self.batch_size)]
 
     def compute_inputs(self, image_group):
         """ Compute inputs for the network using an image_group.
@@ -236,7 +240,7 @@ class Generator(object):
         max_shape = tuple(max(image.shape[x] for image in image_group) for x in range(3))
 
         # compute labels and regression targets
-        labels_group     = [None] * self.batch_size
+        labels_group = [None] * self.batch_size
         regression_group = [None] * self.batch_size
         for index, (image, annotations) in enumerate(zip(image_group, annotations_group)):
             # compute regression targets
@@ -249,15 +253,15 @@ class Generator(object):
             regression_group[index] = bbox_transform(anchors, annotations)
 
             # append anchor states to regression targets (necessary for filtering 'ignore', 'positive' and 'negative' anchors)
-            anchor_states           = np.max(labels_group[index], axis=1, keepdims=True)
+            anchor_states = np.max(labels_group[index], axis=1, keepdims=True)
             regression_group[index] = np.append(regression_group[index], anchor_states, axis=1)
 
-        labels_batch     = np.zeros((self.batch_size,) + labels_group[0].shape, dtype=keras.backend.floatx())
+        labels_batch = np.zeros((self.batch_size,) + labels_group[0].shape, dtype=keras.backend.floatx())
         regression_batch = np.zeros((self.batch_size,) + regression_group[0].shape, dtype=keras.backend.floatx())
 
         # copy all labels and regression values to the batch blob
         for index, (labels, regression) in enumerate(zip(labels_group, regression_group)):
-            labels_batch[index, ...]     = labels
+            labels_batch[index, ...] = labels
             regression_batch[index, ...] = regression
 
         return [regression_batch, labels_batch]
@@ -266,7 +270,7 @@ class Generator(object):
         """ Compute inputs and target outputs for the network.
         """
         # load images and annotations
-        image_group       = self.load_image_group(group)
+        image_group = self.load_image_group(group)
         annotations_group = self.load_annotations_group(group)
 
         # check validity of annotations

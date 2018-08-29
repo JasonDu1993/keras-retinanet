@@ -15,7 +15,7 @@ limitations under the License.
 """
 
 import keras
-from ..utils.eval import evaluate
+from keras_retinanet.utils.eval import evaluate
 
 
 class Evaluate(keras.callbacks.Callback):

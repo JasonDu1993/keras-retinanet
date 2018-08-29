@@ -16,8 +16,8 @@ limitations under the License.
 
 from __future__ import print_function
 
-from .anchors import compute_overlap
-from .visualization import draw_detections, draw_annotations
+from keras_retinanet.utils.anchors import compute_overlap
+from keras_retinanet.utils.visualization import draw_detections, draw_annotations
 
 import numpy as np
 import os
