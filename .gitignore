@@ -3,7 +3,7 @@ __pycache__/
 /.pytest_cache
 /.cache
 *.h5
-.idea/
+.idea
 train.json
 validation.json
 

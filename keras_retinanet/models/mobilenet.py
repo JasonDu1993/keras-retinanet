@@ -76,7 +76,8 @@ class MobileNetBackbone(Backbone):
         backbone = self.backbone.split('_')[0]
 
         if backbone not in MobileNetBackbone.allowed_backbones:
-            raise ValueError('Backbone (\'{}\') not in allowed backbones ({}).'.format(backbone, MobileNetBackbone.allowed_backbones))
+            raise ValueError('Backbone (\'{}\') not in allowed backbones ({}).'.format(backbone,
+                                                                                       MobileNetBackbone.allowed_backbones))
 
 
 def mobilenet_retinanet(num_classes, backbone='mobilenet224_1.0', inputs=None, modifier=None, **kwargs):

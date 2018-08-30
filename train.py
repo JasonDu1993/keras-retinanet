@@ -359,6 +359,32 @@ def parse_args(args):
     """ Parse the arguments.
     """
     parser = argparse.ArgumentParser(description='Simple training script for training a RetinaNet network.')
+
+    parser.add_argument('--backbone', help='Backbone model used by retinanet.', default='resnet50', type=str)
+    parser.add_argument('--batch_size', help='Size of the batches.', default=1, type=int)
+    parser.add_argument('--gpu', help='Id of the GPU to use (as reported by nvidia-smi).')
+    parser.add_argument('--multi_gpu', help='Number of GPUs to use for parallel processing.', type=int, default=0)
+    parser.add_argument('--multi_gpu_force', help='Extra flag needed to enable (experimental) multi-gpu support.',
+                        action='store_true')
+    parser.add_argument('--epochs', help='Number of epochs to train.', type=int, default=150)
+    parser.add_argument('--steps', help='Number of steps per epoch.', type=int, default=2000)
+    parser.add_argument('--snapshot_path',
+                        help='Path to store snapshots of models during training (defaults to \'./snapshots\')',
+                        default='./snapshots')
+    parser.add_argument('--tensorboard_dir', help='Log directory for Tensorboard output', default='./logs')
+    parser.add_argument('--snapshots', help='Disable saving snapshots.', dest='snapshots', action='store_false',
+                        default=False)
+    parser.add_argument('--evaluation', help='Disable per epoch evaluation.', dest='evaluation',
+                        action='store_true', default=True)
+    parser.add_argument('--freeze_backbone', help='Freeze training of backbone layers.', action='store_true',
+                        default=True)
+    parser.add_argument('--random_transform', help='Randomly transform image and annotations.', action='store_true',
+                        default=True)
+    parser.add_argument('--image_min_side', help='Rescale the image so the smallest side is min_side.', type=int,
+                        default=800)
+    parser.add_argument('--image_max_side', help='Rescale the image if the largest side is larger than max_side.',
+                        type=int, default=1333)
+
     subparsers = parser.add_subparsers(help='Arguments for specific dataset types.', dest='dataset_type')
     subparsers.required = True
 
@@ -404,41 +430,25 @@ def parse_args(args):
     group.add_argument('--no_weights', help='Don\'t initialize the model with any weights.', dest='imagenet_weights',
                        action='store_const', const=False)
 
-    parser.add_argument('--backbone', help='Backbone model used by retinanet.', default='resnet50', type=str)
-    parser.add_argument('--batch_size', help='Size of the batches.', default=1, type=int)
-    parser.add_argument('--gpu', help='Id of the GPU to use (as reported by nvidia-smi).')
-    parser.add_argument('--multi_gpu', help='Number of GPUs to use for parallel processing.', type=int, default=0)
-    parser.add_argument('--multi_gpu_force', help='Extra flag needed to enable (experimental) multi-gpu support.',
-                        action='store_true')
-    parser.add_argument('--epochs', help='Number of epochs to train.', type=int, default=150)
-    parser.add_argument('--steps', help='Number of steps per epoch.', type=int, default=2000)
-    parser.add_argument('--snapshot_path',
-                        help='Path to store snapshots of models during training (defaults to \'./snapshots\')',
-                        default='./snapshots')
-    parser.add_argument('--tensorboard_dir', help='Log directory for Tensorboard output', default='./logs')
-    parser.add_argument('--no_snapshots', help='Disable saving snapshots.', dest='snapshots', action='store_false')
-    parser.add_argument('--no_evaluation', help='Disable per epoch evaluation.', dest='evaluation',
-                        action='store_false')
-    parser.add_argument('--freeze_backbone', help='Freeze training of backbone layers.', action='store_true')
-    parser.add_argument('--random_transform', help='Randomly transform image and annotations.', action='store_true')
-    parser.add_argument('--image_min_side', help='Rescale the image so the smallest side is min_side.', type=int,
-                        default=800)
-    parser.add_argument('--image_max_side', help='Rescale the image if the largest side is larger than max_side.',
-                        type=int, default=1333)
-
     return check_args(parser.parse_args(args))
 
 
 def main(args=None):
-    model_name = "180829"
+    model_name = "180830"
     # parse arguments
     if args is None:
         args = sys.argv[1:]
     args = parse_args(args)
     print("args", args)
-    # create object that stores backbone information
-    backbone = models.backbone(args.backbone)
+    # args Namespace(annotation_cache_dir='.', backbone='resnet50', batch_size=1, dataset_type='oid', epochs=150,
+    # evaluation=True, freeze_backbone=True, gpu=None, image_max_side=1333, image_min_side=800, imagenet_weights=True,
+    # labels_filter=None, main_dir='E:\\datasets\\open_images_dataset_v4', multi_gpu=0, multi_gpu_force=False,
+    # parent_label=None, random_transform=True, snapshot=None, snapshot_path='./snapshots', snapshots=False, steps=2000,
+    # tensorboard_dir='./logs', version='challenge2018', weights=None)
 
+    # create object that stores backbone information
+    # <keras_retinanet.models.resnet.ResNetBackbone object at 0x000001E14FD48470>
+    backbone = models.backbone(args.backbone)
     # make sure keras is the minimum required version
     # check_keras_version()
 
