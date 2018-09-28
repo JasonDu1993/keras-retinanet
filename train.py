@@ -21,7 +21,7 @@ import functools
 import os
 import sys
 import warnings
-import cv2
+import cv2  # the import is necessary, otherwise have a bug
 import keras
 import keras.preprocessing.image
 import tensorflow as tf
@@ -48,7 +48,7 @@ from keras_retinanet.preprocessing.open_images import OpenImagesGenerator
 from keras_retinanet.preprocessing.pascal_voc import PascalVocGenerator
 from keras_retinanet.utils.anchors import make_shapes_callback, anchor_targets_bbox
 from keras_retinanet.utils.keras_version import check_keras_version
-from keras_retinanet.utils.model import freeze as freeze_model
+from keras_retinanet.utils.freeze_layers import freeze, freeze_by_layernum
 from keras_retinanet.utils.transform import random_transform_generator
 from keras_retinanet.utils.image import preprocess_image
 
@@ -86,7 +86,7 @@ def model_with_weights(model, weights, skip_mismatch):
     return model
 
 
-def create_models(backbone_retinanet, num_classes, weights, multi_gpu=0, freeze_backbone=False):
+def create_models(backbone_retinanet, num_classes, weights, multi_gpu=0, freeze_num=None):
     """ Creates three models (model, training_model, prediction_model).
 
     Args
@@ -94,26 +94,25 @@ def create_models(backbone_retinanet, num_classes, weights, multi_gpu=0, freeze_
         num_classes        : The number of classes to train.
         weights            : The weights to load into the model.
         multi_gpu          : The number of GPUs to use for training.
-        freeze_backbone    : If True, disables learning for the backbone.
+        freeze_num    : Int, If True, disables learning for the backbone.
 
     Returns
         model            : The base model. This is also the model that is saved in snapshots.
         training_model   : The training model. If multi_gpu=0, this is identical to model.
         prediction_model : The model wrapped with utility functions to perform object detection (applies regression values and performs NMS).
     """
-    modifier = freeze_model if freeze_backbone else None
+    model = backbone_retinanet(num_classes)
+    model = freeze_by_layernum(model, freeze_num)
 
     # Keras recommends initialising a multi-gpu model on the CPU to ease weight sharing, and to prevent OOM errors.
     # optionally wrap in a parallel model
     if multi_gpu > 1:
         from keras.utils import multi_gpu_model
         with tf.device('/cpu:0'):
-            model = model_with_weights(backbone_retinanet(num_classes, modifier=modifier), weights=weights,
-                                       skip_mismatch=True)
+            model = model_with_weights(model, weights=weights, skip_mismatch=True)
         training_model = multi_gpu_model(model, gpus=multi_gpu)
     else:
-        model = model_with_weights(backbone_retinanet(num_classes, modifier=modifier), weights=weights,
-                                   skip_mismatch=True)
+        model = model_with_weights(model, weights=weights,skip_mismatch=True)
         training_model = model
 
     # make prediction model
@@ -376,8 +375,7 @@ def parse_args(args):
                         default=False)
     parser.add_argument('--evaluation', help='Disable per epoch evaluation.', dest='evaluation',
                         action='store_true', default=True)
-    parser.add_argument('--freeze_backbone', help='Freeze training of backbone layers.', action='store_true',
-                        default=True)
+    parser.add_argument('--freeze_num', help='Freeze training of backbone layers.', type=int, default=0)
     parser.add_argument('--random_transform', help='Randomly transform image and annotations.', action='store_true',
                         default=True)
     parser.add_argument('--image_min_side', help='Rescale the image so the smallest side is min_side.', type=int,
@@ -441,7 +439,7 @@ def main(args=None):
     args = parse_args(args)
     print("args", args)
     # args Namespace(annotation_cache_dir='.', backbone='resnet50', batch_size=1, dataset_type='oid', epochs=150,
-    # evaluation=True, freeze_backbone=True, gpu=None, image_max_side=1333, image_min_side=800, imagenet_weights=True,
+    # evaluation=True, freeze_num=True, gpu=None, image_max_side=1333, image_min_side=800, imagenet_weights=True,
     # labels_filter=None, main_dir='E:\\datasets\\open_images_dataset_v4', multi_gpu=0, multi_gpu_force=False,
     # parent_label=None, random_transform=True, snapshot=None, snapshot_path='./snapshots', snapshots=False, steps=2000,
     # tensorboard_dir='./logs', version='challenge2018', weights=None)
@@ -480,7 +478,7 @@ def main(args=None):
             num_classes=train_generator.num_classes(),
             weights=weights,
             multi_gpu=args.multi_gpu,
-            freeze_backbone=args.freeze_backbone
+            freeze_num=args.freeze_num
         )
 
     # print model summary

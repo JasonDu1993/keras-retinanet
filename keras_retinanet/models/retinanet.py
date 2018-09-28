@@ -256,23 +256,17 @@ def __build_anchors(anchor_parameters, features):
     return keras.layers.Concatenate(axis=1, name='anchors')(anchors)
 
 
-def retinanet(
-        inputs,
-        backbone_layers,
-        num_classes,
-        num_anchors=9,
-        create_pyramid_features=__create_pyramid_features,
-        submodels=None,
-        name='retinanet'
-):
+def retinanet(inputs, backbone_layers, num_classes, num_anchors=9, create_pyramid_features=__create_pyramid_features,
+              submodels=None, name='retinanet'):
     """ Construct a RetinaNet model on top of a backbone.
 
     This model is the minimum model necessary for training (with the unfortunate exception of anchors as output).
 
     Args:
         inputs: keras.layers.Input (or list of) for the input to the model.
-        num_classes: Number of classes to classify.
-        num_anchors: Number of base anchors.
+        backbone_layers:
+        num_classes: Int, number of classes to classify.
+        num_anchors: Int, number of base anchors, default is 9
         create_pyramid_features: Functor for creating pyramid features given the features C3, C4, C5 from the backbone.
         submodels: Submodels to run on each feature map (default is regression and classification submodels).
         name: Name of the model.
@@ -290,7 +284,7 @@ def retinanet(
     """
     if submodels is None:
         submodels = default_submodels(num_classes, num_anchors)
-
+    print("backbone_layers", backbone_layers, type(backbone_layers))
     C3, C4, C5 = backbone_layers
 
     # compute pyramid features as per https://arxiv.org/abs/1708.02002
