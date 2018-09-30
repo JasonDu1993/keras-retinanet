@@ -9,6 +9,7 @@ import keras
 import keras.preprocessing.image
 import tensorflow as tf
 from time import time
+from keras_retinanet.losses import smooth_l1, focal
 
 # Allow relative imports when being executed as script.
 # print("1", __package__)
@@ -34,6 +35,7 @@ from keras_retinanet.utils.keras_version import check_keras_version
 from keras_retinanet.utils.freeze_layers import freeze, freeze_by_layernum
 from keras_retinanet.utils.transform import random_transform_generator
 from keras_retinanet.utils.image import preprocess_image
+from keras_retinanet.callbacks.save_loss_value_callback import SaveRetinanetLossValue
 
 
 def makedirs(path):
@@ -69,7 +71,7 @@ def model_with_weights(model, weights, skip_mismatch):
     return model
 
 
-def create_models(backbone_retinanet, num_classes, weights, multi_gpu=0, freeze_num=None):
+def create_models(backbone_retinanet, num_classes, weights, model_name, backbone=None, multi_gpu=0, freeze_num=None):
     """ Creates three models (model, training_model, prediction_model).
 
     Args
@@ -84,9 +86,14 @@ def create_models(backbone_retinanet, num_classes, weights, multi_gpu=0, freeze_
         training_model   : The training model. If multi_gpu=0, this is identical to model.
         prediction_model : The model wrapped with utility functions to perform object detection (applies regression values and performs NMS).
     """
-    model = backbone_retinanet(num_classes)
+    # model = backbone_retinanet(num_classes)
+    from keras_retinanet.models.resnet import resnet50_retinanet
+    from keras_retinanet.models.resnet import resnet101_retinanet
+    # model = resnet50_retinanet(num_classes)
+    model = resnet101_retinanet(num_classes)
+    freeze_num = 10
     model = freeze_by_layernum(model, freeze_num)
-
+    print(model.summary())
     # Keras recommends initialising a multi-gpu model on the CPU to ease weight sharing, and to prevent OOM errors.
     # optionally wrap in a parallel model
     if multi_gpu > 1:
@@ -102,14 +109,16 @@ def create_models(backbone_retinanet, num_classes, weights, multi_gpu=0, freeze_
     prediction_model = retinanet_bbox(model=model)
 
     # compile model
-    training_model.compile(
+    model.compile(
         loss={
-            'regression': losses.smooth_l1(),
-            'classification': losses.focal()
+            'regression': smooth_l1(),
+            'classification': focal()
         },
         optimizer=keras.optimizers.adam(lr=1e-5, clipnorm=0.001)
     )
-
+    model_path = "./snapshots/" + model_name + "_" + backbone + ".h5"
+    model.save(model_path)
+    print(model_path, "model saved")
     return model, training_model, prediction_model
 
 
@@ -132,7 +141,7 @@ def create_callbacks(model, training_model, prediction_model, validation_generat
 
     if args.tensorboard_dir:
         tensorboard_callback = keras.callbacks.TensorBoard(
-            log_dir=args.tensorboard_dir,
+            log_dir=os.path.join(args.tensorboard_dir, model_name),
             histogram_freq=0,
             batch_size=args.batch_size,
             write_graph=True,
@@ -156,29 +165,28 @@ def create_callbacks(model, training_model, prediction_model, validation_generat
         callbacks.append(evaluation)
 
     # save the model
-    if args.snapshots:
-        # ensure directory created first; otherwise h5py will error after epoch.
-        makedirs(args.snapshot_path)
-        checkpoint = keras.callbacks.ModelCheckpoint(
-            os.path.join(
-                args.snapshot_path,
-                '{model_name}_{backbone}_{dataset_type}.epoch{{epoch:03d}}-loss{{loss:.4f}}-valloss{{val_loss:.4f}}.h5'.format(
-                    model_name=model_name,
-                    backbone=args.backbone,
-                    dataset_type=args.dataset_type)
-            ),
-            verbose=1,
-            save_best_only=True,
-            monitor="mAP",
-            mode='max'
-        )
-        checkpoint = RedirectModel(checkpoint, model)
-        callbacks.append(checkpoint)
+    # ensure directory created first; otherwise h5py will error after epoch.
+    makedirs(args.snapshot_path)
+    checkpoint = keras.callbacks.ModelCheckpoint(
+        os.path.join(
+            args.snapshot_path,
+            '{model_name}_{backbone}_{dataset_type}.epoch{{epoch:03d}}-loss{{loss:.4f}}-valloss{{val_loss:.4f}}.h5'.format(
+                model_name=model_name,
+                backbone=args.backbone,
+                dataset_type=args.dataset_type)
+        ),
+        verbose=1,
+        monitor='val_loss',
+        save_weights_only=True,
+        save_best_only=True
+    )
+    checkpoint = RedirectModel(checkpoint, model)
+    callbacks.append(checkpoint)
 
     callbacks.append(keras.callbacks.ReduceLROnPlateau(
         monitor='val_loss',
         factor=0.1,
-        patience=5,
+        patience=4,
         verbose=1,
         mode='auto',
         epsilon=0.0001,
@@ -187,6 +195,7 @@ def create_callbacks(model, training_model, prediction_model, validation_generat
     ))
 
     callbacks.append(keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=10, verbose=1))
+    callbacks.append(SaveRetinanetLossValue(os.path.join(args.tensorboard_dir, model_name, model_name + "_loss.csv")))
 
     return callbacks
 
@@ -250,9 +259,18 @@ def create_generators(args):
             **common_args
         )
     elif args.dataset_type == 'csv':
+        import platform
+        machine_name = platform.node()
+        if machine_name == 'P100v0':
+            base_dir = '/home/sk49/workspace/dataset/meter'
+        elif machine_name == 'DESKTOP-3IQHBMV':
+            base_dir = r'D:\DeepLearning\dataset\meter'
+        else:
+            base_dir = '/home/sk49/workspace/dataset/meter'
         train_generator = CSVGenerator(
             args.annotations,
             args.classes,
+            base_dir=base_dir,
             transform_generator=transform_generator,
             **common_args
         )
@@ -261,13 +279,14 @@ def create_generators(args):
             validation_generator = CSVGenerator(
                 args.val_annotations,
                 args.classes,
+                base_dir=base_dir,
                 **common_args
             )
         else:
             validation_generator = None
     elif args.dataset_type == 'oid':
         train_generator = OpenImagesGenerator(
-            args.main_dir,
+            args.oid_dir,
             subset='train',
             version=args.version,
             labels_filter=args.labels_filter,
@@ -277,7 +296,7 @@ def create_generators(args):
             **common_args
         )
         validation_generator = OpenImagesGenerator(
-            args.main_dir,
+            args.oid_dir,
             subset='validation',
             version=args.version,
             labels_filter=args.labels_filter,
@@ -342,14 +361,14 @@ def parse_args(args):
     """
     parser = argparse.ArgumentParser(description='Simple training script for training a RetinaNet network.')
 
-    parser.add_argument('--backbone', help='Backbone model used by retinanet.', default='resnet50', type=str)
-    parser.add_argument('--batch_size', help='Size of the batches.', default=1, type=int)
+    parser.add_argument('--backbone', help='Backbone model used by retinanet.', default='resnet101', type=str)
+    parser.add_argument('--batch_size', help='Size of the batches.', default=4, type=int)
     parser.add_argument('--gpu', help='Id of the GPU to use (as reported by nvidia-smi).')
     parser.add_argument('--multi_gpu', help='Number of GPUs to use for parallel processing.', type=int, default=0)
     parser.add_argument('--multi_gpu_force', help='Extra flag needed to enable (experimental) multi-gpu support.',
                         action='store_true')
     parser.add_argument('--epochs', help='Number of epochs to train.', type=int, default=150)
-    parser.add_argument('--steps', help='Number of steps per epoch.', type=int, default=2000)
+    parser.add_argument('--steps', help='Number of steps per epoch.', type=int, default=500)
     parser.add_argument('--snapshot_path',
                         help='Path to store snapshots of models during training (defaults to \'./snapshots\')',
                         default='./snapshots')
@@ -384,23 +403,26 @@ def parse_args(args):
     import platform
     machine_name = platform.node()
     if machine_name == 'P100v0':
-        main_dir = '/home/sk49/workspace/dataset/open_images_dataset_v4'
+        oid_dir = '/home/sk49/workspace/dataset/open_images_dataset_v4'
     else:
-        main_dir = r'E:\datasets\open_images_dataset_v4'
+        oid_dir = r'E:\datasets\open_images_dataset_v4'
 
     oid_parser = subparsers.add_parser('oid')
-    oid_parser.add_argument('--main_dir', help='Path to dataset directory.',
-                            default=main_dir)
+    oid_parser.add_argument('--oid_dir', help='Path to dataset directory.',
+                            default=oid_dir)
     oid_parser.add_argument('--version', help='The current dataset version is challenge2018.', default='challenge2018')
     oid_parser.add_argument('--labels_filter', help='A list of labels to filter.', type=csv_list, default=None)
     oid_parser.add_argument('--annotation_cache_dir', help='Path to store annotation cache.', default='.')
     oid_parser.add_argument('--parent_label', help='Use the hierarchy children of this label.', default=None)
 
     csv_parser = subparsers.add_parser('csv')
-    csv_parser.add_argument('annotations', help='Path to CSV file containing annotations for training.')
-    csv_parser.add_argument('classes', help='Path to a CSV file containing class label mapping.')
+    csv_parser.add_argument('--annotations', help='Path to CSV file containing annotations for training.',
+                            default="./datas/train_groundtruth_meter_-1_retinanet_minusval.csv")
+    csv_parser.add_argument('--classes', help='Path to a CSV file containing class label mapping.',
+                            default="./datas/class_mapping_meter_-1.csv")
     csv_parser.add_argument('--val-annotations',
-                            help='Path to CSV file containing annotations for validation (optional).')
+                            help='Path to CSV file containing annotations for validation (optional).',
+                            default="./datas/val_groundtruth_meter_-1_retinanet.csv")
 
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--snapshot', help='Resume training from a snapshot.')
@@ -415,7 +437,7 @@ def parse_args(args):
 
 
 def main(args=None):
-    model_name = "180830"
+    model_name = "180930"
     # parse arguments
     if args is None:
         args = sys.argv[1:]
@@ -423,13 +445,14 @@ def main(args=None):
     print("args", args)
     # args Namespace(annotation_cache_dir='.', backbone='resnet50', batch_size=1, dataset_type='oid', epochs=150,
     # evaluation=True, freeze_num=True, gpu=None, image_max_side=1333, image_min_side=800, imagenet_weights=True,
-    # labels_filter=None, main_dir='E:\\datasets\\open_images_dataset_v4', multi_gpu=0, multi_gpu_force=False,
+    # labels_filter=None, oid_dir='E:\\datasets\\open_images_dataset_v4', multi_gpu=0, multi_gpu_force=False,
     # parent_label=None, random_transform=True, snapshot=None, snapshot_path='./snapshots', snapshots=False, steps=2000,
     # tensorboard_dir='./logs', version='challenge2018', weights=None)
 
     # create object that stores backbone information
     # <keras_retinanet.models.resnet.ResNetBackbone object at 0x000001E14FD48470>
     backbone = models.backbone(args.backbone)
+
     # make sure keras is the minimum required version
     # check_keras_version()
 
@@ -442,27 +465,25 @@ def main(args=None):
     train_generator, validation_generator = create_generators(args)
 
     # create the model
-    if args.snapshot is not None:
+    print("snapshot", args.snapshot)
+    preload = True
+    if preload:
         print('Loading model, this may take a second...')
-        model = models.load_model_custom(args.snapshot, backbone_name=args.backbone)
-        training_model = model
-        prediction_model = retinanet_bbox(model=model)
+        weights = "./snapshots/180929_resnet50_csv.epoch014-loss0.6687-valloss0.7717.h5"
     else:
-        weights = args.weights
-        weights = os.path.expanduser("./snapshots/180817_resnet50_oid.epoch074-loss1.9542-valloss1.9309.h5")
-        print("weights path:", weights)
-        # # default to imagenet if nothing else is specified
-        # if weights is None and args.imagenet_weights:
-        #     weights = backbone.download_imagenet()
+        weights = os.path.expanduser("./snapshots/resnet50_coco_best_v2.1.0.h5")
+    print("weights path:", weights)
 
-        print('Creating model, this may take a second...')
-        model, training_model, prediction_model = create_models(
-            backbone_retinanet=backbone.retinanet,
-            num_classes=train_generator.num_classes(),
-            weights=weights,
-            multi_gpu=args.multi_gpu,
-            freeze_num=args.freeze_num
-        )
+    print('Creating model, this may take a second...')
+    model, training_model, prediction_model = create_models(
+        backbone_retinanet=backbone.retinanet,
+        num_classes=train_generator.num_classes(),
+        weights=weights,
+        model_name=model_name,
+        backbone=args.backbone,
+        multi_gpu=args.multi_gpu,
+        freeze_num=args.freeze_num
+    )
 
     # print model summary
     # print(model.summary())
@@ -488,10 +509,10 @@ def main(args=None):
         generator=train_generator,
         steps_per_epoch=args.steps,
         validation_data=validation_generator,
-        validation_steps=500,
+        validation_steps=100,
         epochs=args.epochs,
         verbose=1,
-        initial_epoch=54,
+        initial_epoch=0,
         callbacks=callbacks,
     )
 

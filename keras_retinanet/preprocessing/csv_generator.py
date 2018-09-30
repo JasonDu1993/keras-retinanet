@@ -45,6 +45,7 @@ def _read_classes(csv_reader):
     """ Parse the classes file given by csv_reader.
     """
     result = {}
+    next(csv_reader)
     for line, row in enumerate(csv_reader):
         line += 1
 
@@ -64,6 +65,7 @@ def _read_annotations(csv_reader, classes):
     """ Read annotations from the csv_reader.
     """
     result = {}
+    next(csv_reader)
     for line, row in enumerate(csv_reader):
         line += 1
 
@@ -143,11 +145,12 @@ class CSVGenerator(Generator):
         # parse the provided class file
         try:
             with _open_for_csv(csv_class_file) as file:
+                # dict, the key is the class name, the value is the class index
                 self.classes = _read_classes(csv.reader(file, delimiter=','))
         except ValueError as e:
             raise_from(ValueError('invalid CSV class file: {}: {}'.format(csv_class_file, e)), None)
 
-        self.labels = {}
+        self.labels = {}  # dict, the key is the class_index, the value is the class name
         for key, value in self.classes.items():
             self.labels[value] = key
 
@@ -158,7 +161,7 @@ class CSVGenerator(Generator):
         except ValueError as e:
             raise_from(ValueError('invalid CSV annotations file: {}: {}'.format(csv_data_file, e)), None)
         self.image_names = list(self.image_data.keys())
-
+        print("image_data length", len(self.image_names))
         super(CSVGenerator, self).__init__(**kwargs)
 
     def size(self):

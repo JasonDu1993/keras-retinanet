@@ -82,6 +82,7 @@ def resnet_retinanet(num_classes, backbone='resnet50', inputs=None, **kwargs):
     # choose default input
     if inputs is None:
         inputs = keras.layers.Input(shape=(None, None, 3))
+        # inputs = keras.layers.Input(shape=(800, 1067, 3))  # test
 
     # create the resnet backbone
     if backbone == 'resnet50':
@@ -94,7 +95,8 @@ def resnet_retinanet(num_classes, backbone='resnet50', inputs=None, **kwargs):
         raise ValueError('Backbone (\'{}\') is invalid.'.format(backbone))
 
     # create the full model
-    return retinanet(inputs=inputs, num_classes=num_classes, backbone_layers=resnet.outputs[1:], **kwargs)
+    model_retinanet = retinanet(inputs=inputs, num_classes=num_classes, backbone_layers=resnet.outputs[1:], **kwargs)
+    return model_retinanet
 
 
 def resnet50_retinanet(num_classes, inputs=None, **kwargs):

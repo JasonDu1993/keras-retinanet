@@ -127,6 +127,7 @@ def __create_pyramid_features(C3, C4, C5, feature_size=256):
         A list of feature levels [P3, P4, P5, P6, P7].
     """
     # upsample C5 to get P5 from the FPN paper
+    print("__create_pyramid_features", C3, C4, C5)
     P5 = keras.layers.Conv2D(feature_size, kernel_size=1, strides=1, padding='same', name='C5_reduced')(C5)
     P5_upsampled = layers.UpsampleLike(name='P5_upsampled')([P5, C4])
     P5 = keras.layers.Conv2D(feature_size, kernel_size=3, strides=1, padding='same', name='P5')(P5)
@@ -233,7 +234,7 @@ def __build_anchors(anchor_parameters, features):
 
     Args
         anchor_parameters : Parameteres that determine how anchors are generated.
-        features          : The FPN features.
+        features          : The FPN features.P3,P4,P5,P6,P7
 
     Returns
         A tensor containing the anchors for the FPN features.
@@ -284,15 +285,16 @@ def retinanet(inputs, backbone_layers, num_classes, num_anchors=9, create_pyrami
     """
     if submodels is None:
         submodels = default_submodels(num_classes, num_anchors)
-    print("backbone_layers", backbone_layers, type(backbone_layers))
+    # print("backbone_layers", backbone_layers, type(backbone_layers))  # list, len is 3
     C3, C4, C5 = backbone_layers
 
     # compute pyramid features as per https://arxiv.org/abs/1708.02002
-    features = create_pyramid_features(C3, C4, C5)
-
+    features = create_pyramid_features(C3, C4,
+                                       C5)  # list, len is 5, <tf.Tensor 'P3/BiasAdd:0' shape=(?, ?, ?, 256) dtype=float32>
+    # print("features", features, type(features))
     # for all pyramid levels, run available submodels
     pyramids = __build_pyramid(submodels, features)
-
+    # print("pyramids", pyramids, type(pyramids))
     return keras.models.Model(inputs=inputs, outputs=pyramids, name=name)
 
 

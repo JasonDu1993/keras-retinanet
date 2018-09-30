@@ -79,10 +79,11 @@ def predict_one_image(model, img_path):
         metadata_dir = "/home/sk49/workspace/dataset/open_images_dataset_v4/challenge2018"
     else:
         metadata_dir = r'files/pictures/train_10'
-
+    # labels_to_names,dict ,the key is the class index, the value is the class name
+    # cls_index, dict, the key is the class name, the value is the index
     labels_to_names, cls_index = get_labels(
         metadata_dir=metadata_dir, version="challenge2018")
-    print(labels_to_names)
+    print("labels_to_names", labels_to_names)
     # copy to draw on
     draw = image.copy()
     draw = cv2.cvtColor(draw, cv2.COLOR_BGR2RGB)

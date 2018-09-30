@@ -219,24 +219,29 @@ def generate_anchors(base_size=16, ratios=None, scales=None):
         scales = np.array([2 ** 0, 2 ** (1.0 / 3.0), 2 ** (2.0 / 3.0)])
 
     num_anchors = len(ratios) * len(scales)
-
+    # print("num_anchors", num_anchors)
     # initialize output anchors
     anchors = np.zeros((num_anchors, 4))
 
     # scale base_size
-    anchors[:, 2:] = base_size * np.tile(scales, (2, len(ratios))).T
-
+    # print("scales", scales)
+    anchors[:, 2:] = base_size * np.tile(scales, (2, len(ratios))) .T
+    # print("anchors", anchors)
     # compute areas of anchors
     areas = anchors[:, 2] * anchors[:, 3]
-
+    # print("areas", areas)
     # correct for ratios
+    a = np.repeat(ratios, len(scales))
     anchors[:, 2] = np.sqrt(areas / np.repeat(ratios, len(scales)))
     anchors[:, 3] = anchors[:, 2] * np.repeat(ratios, len(scales))
-
+    # print("anchors1", anchors)
     # transform from (x_ctr, y_ctr, w, h) -> (x1, y1, x2, y2)
+    # b = np.tile(anchors[:, 2] * 0.5, (2, 1)).T
+    # print("b", b)
     anchors[:, 0::2] -= np.tile(anchors[:, 2] * 0.5, (2, 1)).T
+    # print("anchors2", anchors)
     anchors[:, 1::2] -= np.tile(anchors[:, 3] * 0.5, (2, 1)).T
-
+    # print("anchors3", anchors)
     return anchors
 
 

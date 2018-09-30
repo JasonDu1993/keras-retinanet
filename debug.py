@@ -30,12 +30,12 @@ if __name__ == "__main__" and __package__ is None:
     __package__ = "keras_retinanet.bin"
 
 # Change these to absolute imports if you copy this script outside the keras_retinanet package.
-from ..preprocessing.pascal_voc import PascalVocGenerator
-from ..preprocessing.csv_generator import CSVGenerator
-from ..preprocessing.kitti import KittiGenerator
-from ..preprocessing.open_images import OpenImagesGenerator
-from ..utils.transform import random_transform_generator
-from ..utils.visualization import draw_annotations, draw_boxes
+from keras_retinanet.preprocessing.pascal_voc import PascalVocGenerator
+from keras_retinanet.preprocessing.csv_generator import CSVGenerator
+from keras_retinanet.preprocessing.kitti import KittiGenerator
+from keras_retinanet.preprocessing.open_images import OpenImagesGenerator
+from keras_retinanet.utils.transform import random_transform_generator
+from keras_retinanet.utils.visualization import draw_annotations, draw_boxes
 
 
 def create_generator(args):
@@ -78,9 +78,18 @@ def create_generator(args):
             image_max_side=args.image_max_side
         )
     elif args.dataset_type == 'csv':
+        import platform
+        machine_name = platform.node()
+        if machine_name == 'P100v0':
+            base_dir = '/home/sk49/workspace/dataset/meter'
+        elif machine_name == 'DESKTOP-3IQHBMV':
+            base_dir = r'D:\DeepLearning\dataset\meter'
+        else:
+            base_dir = '/home/sk49/workspace/dataset/meter'
         generator = CSVGenerator(
             args.annotations,
             args.classes,
+            base_dir=base_dir,
             transform_generator=transform_generator,
             image_min_side=args.image_min_side,
             image_max_side=args.image_max_side
